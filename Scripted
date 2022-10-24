@@ -1,0 +1,41 @@
+//scripted
+node(""){
+    def MHD = tool name: "mvn 3.8.5" 
+stage('GitClone'){
+    sh "echo This is git clone"
+    git 'https://github.com/Minidoughnut/maven-web-app.git'
+}
+
+stage('Build'){
+    sh "echo This is the build step"
+    sh "${MHD}/bin/mvn package" 
+}
+
+stage('CodeQualityCheck'){
+    sh "echo Performing Sonarqube test"
+    sh "${MHD}/bin/mvn sonar:sonar"
+}
+
+stage('BackupArtifact'){
+    sh "echo backing up artifacts"
+    sh "${MHD}/bin/mvn deploy"
+}
+
+stage('DeployToContainer'){
+    sh "echo deploying to webserver"
+    deploy adapters: [tomcat9(credentialsId: '7d25a1f2-5d3c-46b5-9cae-9b46dd5eb759', path: '', url: 'http://172.31.16.39:8080/')], contextPath: null, war: 'target/*war'
+}
+
+stage('ProdApproval'){
+    sh "echo approving release to production"
+    timeout(time:'1', unit:'DAYS'){
+        input message: 'Approval for production'
+    }
+}
+
+stage('EmailNotification'){
+    sh "echo sending email notification"
+    emailext body: 'Build successful', recipientProviders: [developers()], subject: 'BUILD NOTIFICATION', to: 'olakunle.solutions@gmail.com'
+}
+}
+
