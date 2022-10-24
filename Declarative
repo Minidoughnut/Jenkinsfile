@@ -1,0 +1,53 @@
+pipeline{
+    agent any
+    tools{ 
+    maven "mvn 3.8.5"
+}
+stages{
+    stage('GitClone'){
+        steps{
+            sh "echo Git clone"
+            git 'https://github.com/Minidoughnut/maven-web-app.git'
+            
+        }
+    }
+    
+    stage ('Build'){
+        steps{
+            sh "echo starting build"
+            sh "mvn clean package"
+        }
+    }
+    
+    stage('CodeQuality'){
+        steps{
+            sh "echo sonarqube testing"
+            sh "mvn sonar:sonar"
+        }
+    }
+    
+    stage('Backup'){
+        steps{
+            sh "echo Nexus backup"
+            sh "mvn deploy"
+        }
+    }
+    
+    stage('ProdApproval'){
+        steps{
+            sh "echo Approval required"
+            timeout(time:1, unit:'DAYS'){
+                input message:'Approval for Production'
+                }
+        }
+    }
+    
+    stage('DeployToProd'){
+        steps{
+            sh "echo deploying to production"
+            deploy adapters: [tomcat9(credentialsId: '7d25a1f2-5d3c-46b5-9cae-9b46dd5eb759', path: '', url: 'http://52.15.127.123:8080/')], contextPath: null, war: 'target/*war'
+            
+        }
+    }
+} 
+}
